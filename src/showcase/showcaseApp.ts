@@ -17,11 +17,11 @@ export class ShowcaseApp extends LitElement {
 					html`<showcase-mediaplayer url="${track.url}"></showcase-mediaplayer>`
 			)}
 			<hr/>
-      <showcase-trackmanager @track-added="${this.trackAdded}"></showcase-trackmanager>
+      <showcase-trackmanager @tracks-changed="${this.tracksChanged}"></showcase-trackmanager>
     </div>`;
 	}
 
-	private trackAdded(evt: CustomEvent<Track[]>) {
+	private tracksChanged(evt: CustomEvent<Track[]>) {
 		this.tracks = evt.detail;
     this.requestUpdate();
 	}

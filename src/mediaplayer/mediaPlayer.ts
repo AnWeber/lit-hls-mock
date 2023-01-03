@@ -5,7 +5,16 @@ import { customElement, property } from "lit/decorators.js";
 @customElement("showcase-mediaplayer")
 export class MediaPlayer extends LitElement {
 
-  private hls = new Hls();
+  private hls: Hls;
+
+  constructor() {
+    super();
+    this.hls = new Hls();
+
+    this.hls.on(Hls.Events.ERROR, (evt, data) => {
+      console.info(evt, data);
+    })
+  }
 
   @property()
   public set url(url: string) {
@@ -16,14 +25,6 @@ export class MediaPlayer extends LitElement {
     }
   }
 
-	constructor() {
-    super();
-  }
-
-
-
-
-
   render() {
     setTimeout(() => {
       const rootNode = this.shadowRoot?.querySelector("audio");
@@ -32,6 +33,6 @@ export class MediaPlayer extends LitElement {
         rootNode.play();
       }
     })
-    return html`<audio></audio>`;
+    return html`<audio controls></audio>`;
   }
 }
