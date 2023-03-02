@@ -3,6 +3,7 @@ import { defineConfig } from "vite";
 import eslint from "vite-plugin-eslint";
 
 const M3U8Folder = "streams";
+const MP3_MIN_BUFFER_MILLISECONDS = 1000;
 
 import { default as fs } from "fs";
 import { join } from "path";
@@ -23,6 +24,7 @@ type M3U8Cache = {
 const responseCache: Record<string, M3U8Cache> = {};
 
 export default defineConfig({
+  publicDir: './streams',
   plugins: [
     eslint({
       failOnWarning: false,
@@ -185,7 +187,7 @@ function parseM3U8(url: string) {
 
 function getHls(m3u8: M3U8Cache) {
   const result = [m3u8.header];
-  const currentTime = m3u8.stopTime || Date.now() + 1000;
+  const currentTime = m3u8.stopTime || Date.now() + MP3_MIN_BUFFER_MILLISECONDS;
 
   let loopTime = m3u8.startTime;
   const index = 0;
@@ -193,7 +195,9 @@ function getHls(m3u8: M3U8Cache) {
     const indexInArray = index % m3u8.extInfs.length;
     const extinf = m3u8.extInfs[indexInArray];
     result.push(...extinf.raw);
-    loopTime += extinf.duration * 1000;
+    const durationInMs = extinf.duration * 1000;
+    console.info(durationInMs);
+    loopTime += durationInMs;
   }
 
   if (m3u8.stopTime) {

@@ -31,6 +31,10 @@ export class MediaPlayer extends LitElement {
       if (rootNode) {
         this.hls.attachMedia(rootNode);
         rootNode.play();
+
+        rootNode.addEventListener("error", (evt) => {
+          console.error(evt);
+        });
       }
     })
     return html`<audio controls></audio>`;
