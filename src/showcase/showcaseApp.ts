@@ -20,7 +20,8 @@ export class ShowcaseApp extends LitElement {
       <showcase-trackmanager @tracks-changed="${this.tracksChanged}"></showcase-trackmanager>
     </div>
 		<hr/>
-		<showcase-multichannel></showcase-multichannel>`;
+		<showcase-multichannel></showcase-multichannel>
+		<showcase-analyser></showcase-analyser>`;
 	}
 
 	private tracksChanged(evt: CustomEvent<Track[]>) {

@@ -2,10 +2,9 @@
 import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
 
-@customElement("showcase-multichannel")
-export class MultiChannel extends LitElement {
-  private volumeNodeL: GainNode | undefined;
-  private stereoPannerL: StereoPannerNode | undefined;
+@customElement("showcase-analyser")
+export class Analysers extends LitElement {
+  private stereoPanner: StereoPannerNode | undefined;
   private canvas: HTMLCanvasElement | undefined;
   private canvasCtx: CanvasRenderingContext2D | null = null;
   constructor() {
@@ -20,47 +19,50 @@ export class MultiChannel extends LitElement {
     if (mediaElement) {
       const audioContext = new AudioContext();
       const audioSource = audioContext.createMediaElementSource(mediaElement);
-      const analyser = audioContext.createAnalyser();
 
+
+
+      this.stereoPanner = new StereoPannerNode(audioContext);
+      audioSource.connect(this.stereoPanner);
       const splitterNode = new ChannelSplitterNode(audioContext);
       const mergerNode = new ChannelMergerNode(audioContext);
+      this.stereoPanner.connect(splitterNode);
+      const analysers: Array<AnalyserNode> = [];
+      for (let index = 0; index < 2; index++){
 
-      audioSource.connect(splitterNode);
+        const analyser = audioContext.createAnalyser();
+        splitterNode.connect(analyser, index, 0); // connect INPUT channel 0
 
-      this.volumeNodeL = new GainNode(audioContext);
-      const volumeNodeR = new GainNode(audioContext);
-      splitterNode.connect(this.volumeNodeL, 0); // connect OUTPUT channel 0
-      splitterNode.connect(volumeNodeR, 0); // connect OUTPUT channel 0
+        analyser.connect(mergerNode, 0, index);
+        analysers.push(analyser)
+      }
 
-      this.volumeNodeL.connect(mergerNode, 0, 0); // connect INPUT channel 0
-      // volumeNodeR.connect(mergerNode, 0, 1); // connect INPUT channel 0
+      mergerNode.connect(audioContext.destination)
 
-      volumeNodeR.connect(analyser);
-      analyser.connect(mergerNode, 0, 1);
-
-      this.stereoPannerL = new StereoPannerNode(audioContext);
-
-      mergerNode.connect(this.stereoPannerL); // connect INPUT channel 0
-
-      this.stereoPannerL.connect(audioContext.destination);
-
-      this.draw(analyser);
+      this.draw(analysers);
     }
   }
 
-  private draw(analyser: AnalyserNode) {
-    requestAnimationFrame(() => this.draw(analyser));
-    if (this.canvasCtx && this.canvas) {
-      const dataArray = new Float32Array(analyser.frequencyBinCount);
-      analyser.getFloatTimeDomainData(dataArray);
+  private draw(analysers: Array<AnalyserNode>) {
+    setTimeout(() => {
 
+      requestAnimationFrame(() => this.draw(analysers));
+    }, 50);
+    if (this.canvasCtx && this.canvas) {
+      let index = 0;
       this.canvasCtx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-      this.drawTimeDomainData(
-        this.canvasCtx,
-        dataArray,
-        this.canvas.width,
-        this.canvas.height
-      );
+      for (const analyser of analysers) {
+        const dataArray = new Float32Array(analyser.frequencyBinCount);
+        analyser.getFloatTimeDomainData(dataArray);
+
+        this.drawBar(
+          this.canvasCtx,
+          dataArray,
+          this.canvas.width,
+          this.canvas.height,
+          index++
+        );
+      }
     }
   }
 
@@ -68,26 +70,33 @@ export class MultiChannel extends LitElement {
     canvasCtx: CanvasRenderingContext2D,
     dataArray: Float32Array,
     width: number,
-    height: number
+    height: number,
+    index: number
   ) {
-    canvasCtx.fillStyle = "rgb(200, 200, 200)";
-  canvasCtx.fillRect(0, 0, width, height);
-  canvasCtx.lineWidth = 2;
-  canvasCtx.strokeStyle = "rgb(0, 0, 0)";
+    canvasCtx.lineWidth = 5;
+    if (index === 0) {
+      canvasCtx.strokeStyle = "rgb(0, 102, 204)";
+    } else {
+      canvasCtx.strokeStyle = "rgb(204, 0, 102)";
+
+    }
   canvasCtx.beginPath();
 
   const sliceWidth = (width * 1.0) / dataArray.length;
-  let x = 0;
+    let x = 0;
+
+    const halfHeight = height / 2;
 
   for (let i = 0; i < dataArray.length; i++) {
-    const v = dataArray[i] * 200.0;
-    const y = height / 2 + v;
+    const v = dataArray[i] * 100.0;
+      const y = halfHeight + v;
+      if (i === 0) {
+        canvasCtx.moveTo(x, y);
+      } else {
+        canvasCtx.lineTo(x, y);
+      }
 
-    if (i === 0) {
-      canvasCtx.moveTo(x, y);
-    } else {
-      canvasCtx.lineTo(x, y);
-    }
+
     x += sliceWidth;
   }
 
@@ -97,19 +106,30 @@ export class MultiChannel extends LitElement {
 
   drawBar(
     canvasCtx: CanvasRenderingContext2D,
-    dataArray: Uint8Array,
+    dataArray: Float32Array,
     width: number,
-    height: number
+    height: number,
+    index: number
   ) {
+
+    if (index === 0) {
+      canvasCtx.fillStyle = "rgb(0, 102, 204)";
+    } else {
+      canvasCtx.fillStyle = "rgb(204, 0, 102)";
+
+    }
     const barWidth = (width / dataArray.length) * 5;
-    let x = 0;
-    for (let index = 0; index < dataArray.length; index++) {
-      const barHeight = dataArray[index] / 2;
+    let posX = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+      const barHeight = (dataArray[i] ) * 1000;
 
-      // canvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
-      canvasCtx.fillRect(x, height - barHeight / 2, barWidth, barHeight);
-
-      x += barWidth + 1;
+      canvasCtx.fillRect(
+        posX,
+        height - Math.min(height, barHeight / 2),
+        barWidth,
+        barHeight / 2
+      );
+      posX += barWidth + 1;
     }
   }
 
@@ -164,12 +184,7 @@ export class MultiChannel extends LitElement {
     ctx.stroke();
   }
 
-  private setVolume(node: GainNode | undefined, value: unknown) {
-    if (node) {
-      console.info(value);
-      node.gain.value = parseFloat(`${value}`) || 0;
-    }
-  }
+
   private setBalance(node: StereoPannerNode | undefined, value: unknown) {
     if (node) {
       console.info(value);
@@ -181,21 +196,14 @@ export class MultiChannel extends LitElement {
     return html`
       <div>
         <audio controls src="/multichannel.mp4"></audio>
-        <input
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          @change=${(e: any) =>
-            this.setVolume(this.volumeNodeL, e.target.value)}
-        />
+
         <input
           type="range"
           min="-1"
           max="1"
           step="0.01"
           @change=${(e: any) =>
-            this.setBalance(this.stereoPannerL, e.target.value)}
+            this.setBalance(this.stereoPanner, e.target.value)}
         />
         <button @click=${this.init.bind(this)}>Init</button>
         <canvas></canvas>
